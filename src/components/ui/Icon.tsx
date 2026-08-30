@@ -1,0 +1,130 @@
+/**
+ * The icon set.
+ *
+ * Lucide, imported by name so the bundle only carries the glyphs actually
+ * used. Icons are decorative unless given a label; a control that shows only an
+ * icon passes `aria-label` on the button, not here.
+ */
+import {
+  ArrowLeftRight,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Banknote,
+  Bus,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  CircleDashed,
+  CircleHelp,
+  Clock,
+  Download,
+  Ellipsis,
+  FileText,
+  Filter,
+  Fuel,
+  Gamepad2,
+  Gift,
+  GraduationCap,
+  HeartPulse,
+  House,
+  Inbox,
+  Info,
+  Languages,
+  LayoutDashboard,
+  ListFilter,
+  Moon,
+  Pencil,
+  Plane,
+  Plus,
+  Receipt,
+  Repeat,
+  RotateCcw,
+  Search,
+  Settings,
+  ShoppingBag,
+  ShoppingBasket,
+  Sun,
+  SunMoon,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  TriangleAlert,
+  Upload,
+  Utensils,
+  Wallet,
+  Wifi,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+
+const ICONS: Record<string, LucideIcon> = {
+  'arrow-down-left': ArrowDownLeft,
+  'arrow-left-right': ArrowLeftRight,
+  'arrow-up-right': ArrowUpRight,
+  banknote: Banknote,
+  bus: Bus,
+  check: Check,
+  'chevron-down': ChevronDown,
+  'chevron-left': ChevronLeft,
+  'chevron-right': ChevronRight,
+  'circle-alert': CircleAlert,
+  'circle-dashed': CircleDashed,
+  'circle-help': CircleHelp,
+  clock: Clock,
+  download: Download,
+  ellipsis: Ellipsis,
+  'file-text': FileText,
+  filter: Filter,
+  fuel: Fuel,
+  gamepad: Gamepad2,
+  gift: Gift,
+  'graduation-cap': GraduationCap,
+  'heart-pulse': HeartPulse,
+  house: House,
+  inbox: Inbox,
+  info: Info,
+  languages: Languages,
+  'layout-dashboard': LayoutDashboard,
+  'list-filter': ListFilter,
+  moon: Moon,
+  pencil: Pencil,
+  plane: Plane,
+  plus: Plus,
+  receipt: Receipt,
+  repeat: Repeat,
+  'rotate-ccw': RotateCcw,
+  search: Search,
+  settings: Settings,
+  'shopping-bag': ShoppingBag,
+  'shopping-basket': ShoppingBasket,
+  sun: Sun,
+  'sun-moon': SunMoon,
+  trash: Trash2,
+  'trending-down': TrendingDown,
+  'trending-up': TrendingUp,
+  'triangle-alert': TriangleAlert,
+  upload: Upload,
+  utensils: Utensils,
+  wallet: Wallet,
+  wifi: Wifi,
+  x: X,
+};
+
+export function Icon({
+  name,
+  size = 16,
+  className,
+  strokeWidth = 1.75,
+}: {
+  name: string;
+  size?: number;
+  className?: string;
+  strokeWidth?: number;
+}) {
+  const Glyph = ICONS[name] ?? CircleDashed;
+  return (
+    <Glyph size={size} strokeWidth={strokeWidth} className={className} aria-hidden="true" focusable="false" />
+  );
+}

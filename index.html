@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>مصرف - متابعة المصروفات</title>
+    <meta name="description" content="متابعة المصروفات من رسائل البنوك والمحافظ، محليًا على جهازك." />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="مصرف" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F6F3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131211" media="(prefers-color-scheme: dark)" />
+    <script>
+      /* Apply the stored theme and language before first paint so the app never
+         flashes the wrong direction or the wrong surface colour. */
+      (function () {
+        try {
+          var raw = localStorage.getItem('misraf.appearance');
+          var pref = raw ? JSON.parse(raw) : null;
+          var theme = pref && pref.theme ? pref.theme : 'system';
+          var lang = pref && pref.language ? pref.language : 'ar';
+          var dark =
+            theme === 'dark' ||
+            (theme === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          root.setAttribute('lang', lang);
+          root.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+        } catch (e) {
+          /* Storage can be unavailable in private mode; defaults in the markup stand. */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
