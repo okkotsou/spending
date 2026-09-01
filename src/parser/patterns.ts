@@ -223,7 +223,7 @@ export const LAST4_PATTERNS: NamedPattern[] = [
   rule('card-label-en', String.raw`\bcard\s*[:\-]?\s*(?:no\.?|number)?\s*[*x.]*\s*(\d{4})\*?`),
   rule('ending-en', String.raw`\bending(?: in| with)?\s*[*.]*\s*(\d{4})`),
   rule('masked', String.raw`[*x.]{2,}\s*(\d{4})\b`),
-  // `Via: *9104,Visa` — one star, no label the other rules recognise.
+  // `Via: *4417,Visa` — one star, no label the other rules recognise.
   rule('star-prefix', String.raw`(?:^|[\s:,;(])\*(\d{4})(?!\d)`),
   rule('trailing-star', String.raw`\b(\d{4})\*`),
 ];
