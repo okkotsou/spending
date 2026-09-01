@@ -1,0 +1,29 @@
+# Netlify free tier deployment.
+#
+# The app is a static bundle served from the site root, so no BASE_PATH is set.
+# The SPA redirect exists for completeness: routing is done in the URL hash, so
+# every path already resolves to index.html, but a stray deep link stays safe.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# The service worker must never be served from a stale cache, or a deploy
+# cannot reach a device that already installed the app.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
