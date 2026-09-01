@@ -388,3 +388,57 @@ English, light and dark, and on an emulated iPhone:
 - Native date and time inputs render in the browser's locale, not the app's.
   That is not controllable from a web page, and the alternative — a hand-built
   date picker — would be worse on a phone than the system one.
+
+---
+
+## Pass three: real messages
+
+The first two passes read the code. This one read the output, against twelve
+messages from a live Saudi inbox rather than written fixtures. Seven parsed
+correctly. The other five, and the one behaviour the fixtures had no way to
+catch, are below. All are fixed, and each is pinned by a fixture written in the
+format exactly as received.
+
+1. **A declined attempt was booked as spending.** An "Insufficient balance"
+   message names a card, a merchant, an amount and a timestamp, so it parsed as
+   a clean purchase. No money moved. It now stops at the parser with the new
+   reason `declined` and appears in the not-counted queue, so the message is
+   visibly handled rather than silently dropped or wrongly counted. This was the
+   most serious finding of the three passes: it inflated the month, and nothing
+   in the interface would have shown why.
+2. **Money moved between the user's own accounts counted as spending.** A wallet
+   top-up arrives as an ordinary purchase alert; only the counterparty gives it
+   away. The new kind `self_transfer` is in neither the outflow nor the income
+   list, so it changes no total, and the row is drawn without a sign because the
+   message genuinely does not say which direction the money went.
+3. **`At:` is both the merchant label and the timestamp label in one bank's
+   format.** The optional separator in the rule could backtrack past the guard,
+   so a date became a merchant name. The separator is now required and the
+   capture cannot begin on punctuation.
+4. **The merchant on a `From:` line was never read.** Two purchases had no
+   counterparty at all. The new rule reads it, and its guard drops the banks
+   that put the debited account on that line instead.
+5. **Arabic alerts write the clock before the date.** `في 07:51 26-08-31` lost
+   its time entirely, so every mada purchase displayed as date-only. The clock is
+   now read on either side of the date, but only when it sits immediately
+   against it.
+6. **A cross-border purchase reports fees separately.** The pre-fee figure was
+   booked, understating the month. The stated total is now preferred, and only
+   when it reconciles to the cent with the stated VAT and fees; a total that does
+   not add up is ignored.
+
+Two further changes came out of driving the result in a browser rather than
+reading it. Held income was invisible behind a count chip, so a transfer from a
+person looked like nothing had happened; it is now shown in full on the
+dashboard with its sender, its amount and a confirm action, and the income
+headline names its sources once there is more than one. And the queue that holds
+what was not counted was titled "Could not be read", which stopped being true
+the moment a declined message could land there; it is now "Not counted".
+
+**Verification after this pass.** `npm run lint` clean, `npx tsc -b` clean,
+`npm test` 246 passing across 10 files, coverage 95.9 percent of statements,
+99.2 percent of lines, 97.5 percent of functions and 86.2 percent of branches,
+`npm run build` succeeds. Driven in a browser at 390px with the twelve messages:
+no console errors, spending excludes the self transfers, the held inflows render
+with their senders, and confirming them moves the income headline to
+`راتب 14,500 ر.س. · تحويل وارد 750 ر.س.`

@@ -204,10 +204,12 @@ npm test
 npm run coverage
 ```
 
-230 tests across 10 files. The parser is checked against a corpus of 52 realistic messages
+246 tests across 10 files. The parser is checked against a corpus of 63 realistic messages
 covering both languages, both Arabic digit systems, diacritics, thousands
-separators, five date layouts, foreign-currency purchases, balance clauses,
-duplicate alerts, refunds, and the messages that must be refused. Coverage over
+separators, five date layouts, the clock written before the date, foreign-currency
+purchases billed with separate fees, balance clauses, duplicate alerts, refunds,
+declined attempts, movements between the user's own accounts, and the messages
+that must be refused. Coverage over
 `src/parser`, `src/categorize` and `src/domain` is enforced at 90 percent of lines,
 statements and functions, and 82 percent of branches; the run fails if any of
 them slips. A separate test reads the colour tokens out of `src/index.css` and
