@@ -14,6 +14,7 @@ export const txKindSchema = z.enum([
   'transfer_out',
   'transfer_in',
   'atm_withdrawal',
+  'self_transfer',
   'deposit',
   'salary',
   'fee',
@@ -62,7 +63,7 @@ export const unparsedSchema = z.object({
   raw: z.string(),
   receivedAt: z.number().int(),
   source: txSourceSchema,
-  reason: z.enum(['no_amount', 'no_kind', 'not_a_transaction', 'empty']),
+  reason: z.enum(['no_amount', 'no_kind', 'not_a_transaction', 'declined', 'empty']),
   fingerprint: z.string().min(1),
 });
 

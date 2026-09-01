@@ -17,6 +17,7 @@ import {
   inMonth,
   monthlyTotals,
   spendByCategory,
+  incomeByKind,
   spendToSamePoint,
   topMerchants,
   totalIncome,
@@ -40,6 +41,7 @@ import {
 import { cx } from '@/lib/cx';
 import { Icon } from '@/components/ui/Icon';
 import { AlertList } from '@/components/AlertList';
+import { PendingIncome } from '@/components/PendingIncome';
 import { BudgetHealthList } from '@/components/BudgetHealthList';
 import { PaceChart } from '@/components/charts/PaceChart';
 import { CategoryDonut } from '@/components/charts/CategoryDonut';
@@ -164,7 +166,15 @@ export function Dashboard() {
     });
   }, [period.month, app.settings.budgetStartDay, app.now, app.transactions, app.recurring, comparison, spent]);
 
-  const pendingCount = app.transactions.filter((tx) => tx.pending).length;
+  // Held inflows are shown in full on the dashboard, so money that arrived is
+  // never invisible; they are drawn from the whole ledger rather than the
+  // selected period, because an unconfirmed amount is outstanding regardless of
+  // which month you happen to be looking at.
+  const pendingIncome = useMemo(
+    () => app.transactions.filter((tx) => tx.pending).sort((a, b) => b.occurredAt - a.occurredAt),
+    [app.transactions],
+  );
+  const incomeSlices = useMemo(() => incomeByKind(rows), [rows]);
   const reviewCount = app.transactions.filter((tx) => tx.needsReview).length;
   const unreadCount = app.unparsed.length;
 
@@ -273,6 +283,18 @@ export function Dashboard() {
             </dd>
           </div>
         </dl>
+        {/* A salary and a transfer from a person are both money in, but they
+            are not the same fact; name them once there is more than one. */}
+        {incomeSlices.length > 1 ? (
+          <p className="text-caption text-ink-3 mt-2">
+            {incomeSlices
+              .map(
+                (slice) =>
+                  `${t(`kind.${slice.kind}`)} ${formatMoney(slice.amount, locale, { decimals: 'never' })}`,
+              )
+              .join(' · ')}
+          </p>
+        ) : null}
         {overall && period.month && daysLeft > 0 ? (
           <p className="text-caption text-ink-3 mt-2">
             {t('dashboard.safeToSpendPerDay', {
@@ -285,13 +307,10 @@ export function Dashboard() {
 
       {app.alerts.length > 0 ? <AlertList alerts={app.alerts.slice(0, 4)} /> : null}
 
-      {(pendingCount > 0 || reviewCount > 0 || unreadCount > 0) && (
+      <PendingIncome rows={pendingIncome} />
+
+      {(reviewCount > 0 || unreadCount > 0) && (
         <div className="flex flex-wrap gap-2">
-          {pendingCount > 0 ? (
-            <Button compact icon="clock" onClick={() => navigate('transactions', { view: 'pending' })}>
-              {t('dashboard.pendingIncome', { count: pendingCount })}
-            </Button>
-          ) : null}
           {reviewCount > 0 ? (
             <Button compact icon="circle-alert" onClick={() => navigate('transactions', { view: 'review' })}>
               {t('dashboard.needsReview', { count: reviewCount })}

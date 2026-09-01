@@ -796,4 +796,207 @@ Available balance SAR 3,240.55
     expect: null,
     reason: 'empty',
   },
+  // Formats collected from a live Saudi inbox: two banks, both languages, with
+  // the clock written before the date in Arabic and the merchant on a `From:`
+  // line in English. Dates are shifted to sit before FIXTURE_NOW; the layouts
+  // are exactly as received.
+  {
+    id: 'live-en-local-applepay',
+    note: 'Local purchase through Apple Pay, merchant on an At: line',
+    text: `Local Purchase
+Card: *9104; Apple Pay 
+Amount: 4 SAR
+At: Meed E
+Date: 12/06/24 18:35`,
+    expect: {
+      kind: 'purchase',
+      amount: 4,
+      merchant: 'Meed E',
+      last4: '9104',
+      institution: 'applepay',
+      at: '2024-06-12 18:35',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-en-online-from-line',
+    note: 'Online purchase with the merchant on a From: line and the amount inline',
+    text: `Online Purchase Transaction Amount 19.5 SAR 
+From: HUNGER
+ Card: *9104 
+Date 12/06/24 03:23`,
+    expect: {
+      kind: 'purchase',
+      amount: 19.5,
+      merchant: 'Hunger',
+      last4: '9104',
+      at: '2024-06-12 03:23',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-en-adding-money',
+    note: 'Account top up; the At: line is a timestamp and must not become a merchant',
+    text: `Adding money to account
+Amount: 452 SAR
+Via: *tion
+At: 2024-06-12 13:48`,
+    expect: {
+      kind: 'deposit',
+      amount: 452,
+      merchant: '',
+      at: '2024-06-12 13:48',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-en-internal-incoming',
+    note: 'Incoming transfer from a person, no spaces after the labels',
+    text: `Internal incoming transfer
+Amount:500SR
+From:F ALMESHARI
+Acc:219
+At:12/06/24 13:44`,
+    expect: {
+      kind: 'transfer_in',
+      amount: 500,
+      merchant: 'F Almeshari',
+      at: '2024-06-12 13:44',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-en-declined',
+    note: 'Declined attempt; reads like a purchase but no money moved',
+    text: `Insufficient balance
+Transaction: Online Purchase
+Card: ***9104
+Amount: 33.83 SAR
+At: HUNGERSTATION LLC
+Date: 12/06/24 04:00`,
+    expect: null,
+    reason: 'declined',
+  },
+  {
+    id: 'live-en-crossborder-fees',
+    note: 'Foreign merchant billed in SAR with a fee; the total due is what was debited',
+    text: `Online Purchase
+Via: *9104,Visa
+Amount: 16.6 SAR
+From: EPC*EP
+Exchange rate: 1
+VAT: 0.00 SAR
+Fees: 0.33 SAR
+Total due amount: 16.93 SAR
+Remaining balance: 222.09 SAR
+Country: CH
+At: 12/06/24 22:47`,
+    expect: {
+      kind: 'purchase',
+      amount: 16.93,
+      merchant: 'EPC*EP',
+      last4: '9104',
+      institution: 'visa',
+      at: '2024-06-12 22:47',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-ar-pos-time-before-date',
+    note: 'mada point of sale with the clock written before the date',
+    text: `شراء عبر نقاط بيع SAR 50
+بطاقة 6672* مدى- ApplePay
+من ALDREES 15*
+في 07:51 24-06-12`,
+    expect: {
+      kind: 'purchase',
+      amount: 50,
+      merchant: 'Aldrees 15',
+      last4: '6672',
+      institution: 'applepay',
+      at: '2024-06-12 07:51',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-ar-incoming-from-person',
+    note: 'Incoming local transfer from a person named in Arabic',
+    text: `حوالة واردة محلية
+مبلغ 50 SAR
+من هند عبدالعزيز محمد المحارب
+حساب *0000
+في 06:26 24-06-12`,
+    expect: {
+      kind: 'transfer_in',
+      amount: 50,
+      merchant: 'هند عبدالعزيز محمد المحارب',
+      last4: '0000',
+      at: '2024-06-12 06:26',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-ar-online-latin-merchant',
+    note: 'Arabic online purchase alert carrying a Latin merchant name',
+    text: `شراء إنترنت
+مبلغ 19.35 SAR
+بطاقة 6672* مدى-ApplePay
+حساب *0000
+من HUNGERSTATION LLC
+في 23:54 24-06-12`,
+    expect: {
+      kind: 'purchase',
+      amount: 19.35,
+      merchant: 'Hungerstation',
+      last4: '6672',
+      institution: 'applepay',
+      at: '2024-06-12 23:54',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-ar-self-transfer-bank',
+    note: 'Wallet top up of the user own account, sent as a purchase alert',
+    text: `شراء إنترنت
+مبلغ 1,576 SAR
+بطاقة 6672* مدى-ApplePay
+حساب *0000
+من STC Bank
+في 12:27 24-06-12`,
+    expect: {
+      kind: 'self_transfer',
+      amount: 1576,
+      merchant: 'STC Bank',
+      last4: '6672',
+      at: '2024-06-12 12:27',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
+  {
+    id: 'live-en-self-transfer-wallet',
+    note: 'Same movement in English, counterparty is a wallet provider',
+    text: `Local Purchase
+Card: *9104; Apple Pay 
+Amount: 300 SAR
+At: urpay
+Date: 12/06/24 11:02`,
+    expect: {
+      kind: 'self_transfer',
+      amount: 300,
+      merchant: 'urpay',
+      last4: '9104',
+      at: '2024-06-12 11:02',
+      timeKnown: true,
+      needsReview: false,
+    },
+  },
 ];

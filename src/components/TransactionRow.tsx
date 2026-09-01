@@ -7,7 +7,7 @@
  * rather than hidden, because the money did appear on the statement.
  */
 import type { Category, Transaction } from '@/types';
-import { isOutflow } from '@/types';
+import { isNeutralFlow, isOutflow } from '@/types';
 import { useI18n } from '@/i18n';
 import { formatMoney, formatRelativeDate, formatTime } from '@/lib/format';
 import { categoryColor, categoryName } from '@/lib/category';
@@ -34,6 +34,7 @@ export function TransactionRow({
 }) {
   const { t, locale, language } = useI18n();
   const outflow = isOutflow(tx.kind);
+  const neutral = isNeutralFlow(tx.kind);
   const reversed = tx.reversedBy !== undefined;
 
   const amount = formatMoney(tx.amountSar, locale, { decimals: 'auto' });
@@ -107,10 +108,10 @@ export function TransactionRow({
             className={cx(
               'num text-body font-medium',
               reversed && 'line-through opacity-60',
-              outflow ? 'text-ink' : 'text-income',
+              neutral ? 'text-ink-2' : outflow ? 'text-ink' : 'text-income',
             )}
           >
-            {outflow ? '' : '+'}
+            {outflow || neutral ? '' : '+'}
             {amount}
           </span>
           {tx.pending ? (

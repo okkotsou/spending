@@ -10,6 +10,7 @@ export type TxKind =
   | 'transfer_out'
   | 'transfer_in'
   | 'atm_withdrawal'
+  | 'self_transfer'
   | 'deposit'
   | 'salary'
   | 'fee'
@@ -24,11 +25,27 @@ const OUTFLOW_KINDS: readonly TxKind[] = [
   'subscription',
 ];
 
+/**
+ * Money moved between the user's own accounts changes no total. It is not
+ * spending and it is not income, so it appears in `self_transfer` and in
+ * neither list below; the ledger records it, the figures ignore it.
+ */
+
 /** Inflows that represent real income rather than a reversal of spending. */
 const INCOME_KINDS: readonly TxKind[] = ['salary', 'deposit', 'transfer_in'];
 
 export function isOutflow(kind: TxKind): boolean {
   return OUTFLOW_KINDS.includes(kind);
+}
+
+/**
+ * Movements that change no total because the money stayed with the user.
+ * The message these come from is shaped like a purchase, so it says nothing
+ * reliable about direction; the interface shows the sum without a sign rather
+ * than claiming one.
+ */
+export function isNeutralFlow(kind: TxKind): boolean {
+  return kind === 'self_transfer';
 }
 
 export function isIncomeKind(kind: TxKind): boolean {
@@ -111,6 +128,7 @@ export type ParseFailureReason =
   | 'no_amount'
   | 'no_kind'
   | 'not_a_transaction'
+  | 'declined'
   | 'empty';
 
 export interface Category {

@@ -232,6 +232,7 @@ const MANUAL_KINDS: TxKind[] = [
   'subscription',
   'fee',
   'atm_withdrawal',
+  'self_transfer',
   'transfer_out',
   'transfer_in',
   'deposit',

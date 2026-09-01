@@ -21,6 +21,7 @@ import {
   countsAsIncome,
   countsAsSpend,
   dailySeries,
+  incomeByKind,
   monthlyTotals,
   spendByCategory,
   spendToSamePoint,
@@ -685,5 +686,52 @@ describe('coverage of the remaining branches', () => {
       tx({ amountSar: 56, merchant: 'Old', merchantKey: 'old', occurredAt: at(2024, m, 12) }),
     );
     expect(renewingSoon(detectRecurring(rows, at(2024, 3, 20)), at(2024, 9, 1), 7)).toEqual([]);
+  });
+});
+
+describe('money between the user own accounts', () => {
+  it('is neither spending nor income', () => {
+    const rows = [
+      tx({ amountSar: 1576, kind: 'self_transfer', merchant: 'STC Bank' }),
+      tx({ amountSar: 300, kind: 'self_transfer', merchant: 'urpay' }),
+      tx({ amountSar: 612.4 }),
+    ];
+    expect(totalSpend(rows)).toBeCloseTo(612.4, 2);
+    expect(totalIncome(rows)).toBe(0);
+    expect(incomeByKind(rows)).toEqual([]);
+  });
+
+  it('never reaches a category total, so budgets ignore it', () => {
+    const rows = [tx({ amountSar: 1576, kind: 'self_transfer', categoryId: 'transfers' })];
+    expect(spendByCategory(rows)).toEqual([]);
+  });
+});
+
+describe('income by source', () => {
+  it('separates a transfer from a person from a salary', () => {
+    const rows = [
+      tx({ amountSar: 16400, kind: 'salary', merchant: 'STC' }),
+      tx({ amountSar: 500, kind: 'transfer_in', merchant: 'Fatimah S' }),
+      tx({ amountSar: 200, kind: 'transfer_in', merchant: 'Ahmed K' }),
+      tx({ amountSar: 90, kind: 'purchase' }),
+    ];
+    expect(incomeByKind(rows)).toEqual([
+      { kind: 'salary', amount: 16400, count: 1 },
+      { kind: 'transfer_in', amount: 700, count: 2 },
+    ]);
+  });
+
+  it('leaves an unconfirmed transfer out until it is confirmed', () => {
+    const held = tx({ amountSar: 500, kind: 'transfer_in', pending: true });
+    expect(incomeByKind([held])).toEqual([]);
+    expect(totalIncome([held])).toBe(0);
+    expect(incomeByKind([{ ...held, pending: false }])[0]?.amount).toBe(500);
+    expect(totalIncome([{ ...held, pending: false }])).toBe(500);
+  });
+
+  it('never counts a refund as income, confirmed or not', () => {
+    const refund = tx({ amountSar: 449, kind: 'refund' });
+    expect(incomeByKind([refund])).toEqual([]);
+    expect(totalIncome([refund])).toBe(0);
   });
 });

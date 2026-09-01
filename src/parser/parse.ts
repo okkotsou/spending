@@ -13,6 +13,7 @@
 import type { ParseFailureReason, TxKind } from '@/types';
 import { fingerprint, matchable, normalize } from './normalize';
 import {
+  findChargedTotal,
   findLabelledBareAmount,
   findMoney,
   findSarEquivalent,
@@ -21,12 +22,14 @@ import {
 import { findDate } from './dates';
 import { merchantKey, prettyMerchant } from './merchants';
 import {
+  DECLINE_PATTERNS,
   INSTITUTION_PATTERNS,
   KIND_PATTERNS,
   LAST4_PATTERNS,
   MERCHANT_PATTERNS,
   NON_MERCHANT_LINE,
   REJECT_PATTERNS,
+  SELF_TRANSFER_PATTERNS,
 } from './patterns';
 
 export interface ParsedTransaction {
@@ -144,11 +147,17 @@ export function parseMessage(rawInput: string, options: ParseOptions = {}): Pars
     return { ok: false, failure: { raw, fingerprint: print, reason: 'not_a_transaction' } };
   }
 
+  // A declined attempt describes a charge that never happened. Booking it would
+  // overstate the month, so it stops here and is shown as handled, not counted.
+  if (firstMatch(matched, DECLINE_PATTERNS)) {
+    return { ok: false, failure: { raw, fingerprint: print, reason: 'declined' } };
+  }
+
   const kindHit = firstMatch(matched, KIND_PATTERNS);
   if (!kindHit) {
     return { ok: false, failure: { raw, fingerprint: print, reason: 'no_kind' } };
   }
-  const kind = kindHit.entry.kind;
+  let kind = kindHit.entry.kind;
   const matchedRules: string[] = [kindHit.entry.id];
 
   // Amount ------------------------------------------------------------------
@@ -191,6 +200,15 @@ export function parseMessage(rawInput: string, options: ParseOptions = {}): Pars
     return { ok: false, failure: { raw, fingerprint: print, reason: 'no_amount' } };
   }
 
+  // Fees stated separately are still money out of the account.
+  if (currency === 'SAR') {
+    const charged = findChargedTotal(withoutBalance, amount);
+    if (charged !== undefined) {
+      amount = charged;
+      matchedRules.push('amount-total-due');
+    }
+  }
+
   // Merchant ----------------------------------------------------------------
   let merchantRaw = '';
   let inferredMerchant = false;
@@ -209,6 +227,24 @@ export function parseMessage(rawInput: string, options: ParseOptions = {}): Pars
     }
   }
   merchantRaw = merchantRaw.replace(/[.,;:\s]+$/, '').trim();
+
+  // A movement whose counterparty is a bank or a wallet is the user shifting
+  // their own money, not spending it. The message arrives shaped like a
+  // purchase, so the correction has to happen here, once the counterparty is
+  // known. Reversals, salary and fees are never re-read this way.
+  const SELF_TRANSFERABLE: readonly TxKind[] = [
+    'purchase',
+    'transfer_out',
+    'transfer_in',
+    'deposit',
+  ];
+  if (merchantRaw.length > 0 && SELF_TRANSFERABLE.includes(kind)) {
+    const selfHit = firstMatch(matchable(merchantRaw), SELF_TRANSFER_PATTERNS);
+    if (selfHit) {
+      kind = 'self_transfer';
+      matchedRules.push(selfHit.entry.id);
+    }
+  }
 
   // Card or account tail ----------------------------------------------------
   let last4: string | undefined;

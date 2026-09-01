@@ -194,6 +194,29 @@ committed that nobody can regenerate, and the mark can be changed in one place.
 **No emoji anywhere.**
 Lucide throughout, including in these documents and in the commit history.
 
+**A declined attempt is recorded, never counted.**
+"Insufficient balance" messages carry a card, a merchant, an amount and a
+timestamp, so they parse as cleanly as a real purchase. No money moved, so
+booking one would overstate the month. They stop at the parser with the reason
+`declined` and appear in the not-counted queue, where the user can see the app
+handled the message rather than lost it.
+
+**Money between the user's own accounts is a kind of its own.**
+Topping up a wallet arrives as an ordinary purchase alert: same card, same
+format, only the counterparty differs. The kind `self_transfer` is neither an
+outflow nor income, so it changes no total, and the row is drawn without a sign
+because the message genuinely does not say which direction the money went. The
+signal is the counterparty alone -- a bank or a wallet provider -- read from the
+merchant field only, so a card issued by a bank cannot turn every purchase on it
+into a transfer. Anything this reads wrong is one tap to correct, and it is
+listed in the row's matched rules so the reason is visible.
+
+**A stated total wins over the goods amount, but only when it reconciles.**
+A cross-border card purchase reports the amount, then VAT and fees, then the sum
+actually debited. Taking the first figure understates the month. The parser
+prefers the stated total only when it equals the amount plus the stated charges
+to the cent; a total that does not add up is some other figure and is ignored.
+
 ---
 
 ## Deliberate non-goals

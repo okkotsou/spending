@@ -36,6 +36,7 @@ const KIND_FALLBACK: Partial<Record<TxKind, string>> = {
   deposit: CASH_CATEGORY_ID,
   transfer_in: TRANSFERS_CATEGORY_ID,
   transfer_out: TRANSFERS_CATEGORY_ID,
+  self_transfer: TRANSFERS_CATEGORY_ID,
   salary: TRANSFERS_CATEGORY_ID,
   subscription: 'subscriptions',
 };
@@ -67,6 +68,13 @@ export function categorise(
   rules: readonly CategoryRule[],
   knownCategoryIds: ReadonlySet<string>,
 ): CategoryDecision {
+  // Money between the user's own accounts belongs under Transfers whatever the
+  // counterparty is called, so a bank name that also appears in the merchant
+  // dictionary cannot file it as a bill.
+  if (tx.kind === 'self_transfer' && knownCategoryIds.has(TRANSFERS_CATEGORY_ID)) {
+    return { categoryId: TRANSFERS_CATEGORY_ID, source: 'default' };
+  }
+
   const ordered = [...rules]
     .filter((rule) => knownCategoryIds.has(rule.categoryId))
     .sort((a, b) => b.priority - a.priority || b.createdAt - a.createdAt);

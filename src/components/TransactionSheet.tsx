@@ -31,6 +31,7 @@ const KINDS: TxKind[] = [
   'transfer_out',
   'transfer_in',
   'atm_withdrawal',
+  'self_transfer',
   'deposit',
   'salary',
   'fee',

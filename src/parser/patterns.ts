@@ -56,6 +56,41 @@ export const REJECT_PATTERNS: NamedPattern[] = [
  * Transaction kind. Order is significance, not frequency: a refund of a
  * purchase mentions both words, and the refund reading is the correct one.
  */
+/**
+ * Counterparties that mean the money did not leave the user's control.
+ *
+ * Topping up one of your own accounts through a wallet arrives as an ordinary
+ * purchase message: same card, same format, only the merchant differs. The
+ * merchant is a bank or a wallet provider rather than a shop, and that is the
+ * one signal the text offers, so it is the one this table reads. It is applied
+ * to the counterparty alone, never the whole message, so a card issued by a
+ * bank cannot turn every purchase on it into a transfer.
+ */
+export const SELF_TRANSFER_PATTERNS: NamedPattern[] = [
+  rule('self:bank-word', String.raw`(?:^|\s)(?:bank|بنك|مصرف)(?:\s|$)`),
+  rule(
+    'self:wallet',
+    String.raw`^(?:stc ?pay|urpay|barq|tiqmo|d ?360|محفظتي|محفظه)\b`,
+  ),
+];
+
+/**
+ * Messages describing an attempt that failed. The text reads exactly like a
+ * real purchase -- card, merchant, amount, timestamp -- but no money moved, so
+ * booking it would overstate spending. These are held back deliberately rather
+ * than dropped, so the user still sees that the message was handled.
+ */
+export const DECLINE_PATTERNS: NamedPattern[] = [
+  rule(
+    'declined-en',
+    String.raw`\b(insufficient (?:balance|funds)|declined|not approved|unsuccessful|transaction failed|failed transaction)\b`,
+  ),
+  rule(
+    'declined-ar',
+    String.raw`(رصيد غير كاف|الرصيد غير كاف|عملية مرفوضة|تم رفض العملية|مرفوضة|لم تتم العملية|فشلت العملية|غير ناجحة)`,
+  ),
+];
+
 export const KIND_PATTERNS: KindPattern[] = [
   kindRule('refund-ar', 'refund', String.raw`(استرجاع|استرداد|رد مبلغ|عكس عملية|عملية عكسية|مرتجع|إعادة مبلغ)`),
   kindRule(
@@ -108,7 +143,11 @@ export const KIND_PATTERNS: KindPattern[] = [
     String.raw`\b(outgoing transfer|transfer(?:red)? to|sent to|bill payment|sadad)\b`,
   ),
   kindRule('deposit-ar', 'deposit', String.raw`(إيداع|تمت إضافة مبلغ|إضافة إلى حسابك)`),
-  kindRule('deposit-en', 'deposit', String.raw`\b(deposit(?:ed)?|credited to your account)\b`),
+  kindRule(
+    'deposit-en',
+    'deposit',
+    String.raw`\b(deposit(?:ed)?|credited to your account|adding money to(?: your)? account|money added|top[- ]?up)\b`,
+  ),
   kindRule(
     'purchase-ar',
     'purchase',
@@ -155,7 +194,21 @@ export const MERCHANT_PATTERNS: NamedPattern[] = [
   rule('ila', String.raw`(?:^|\n|\s)(?:إلى|لصالح)(?:\s*[:\-]\s*|\s+)(?!حساب|بطاقة)([^\n,;]+)`),
   rule('min', String.raw`(?:^|\n|\s)من(?:\s*[:\-]\s*|\s+)(?!حساب|بطاقة|رصيد|الصراف)([^\n,;]+)`),
   rule('merchant-en', String.raw`(?:^|\n)\s*(?:merchant|store|payee|beneficiary)\s*[:\-]?\s*([^\n]+)`),
-  rule('at-en', String.raw`(?:^|\n)\s*at\s*[:\-]?\s*([^\n]+)`),
+  // `From: HUNGERSTATION` names the merchant on a purchase and the sender on an
+  // incoming transfer; both are the party the row is about. The colon is
+  // required so this never competes with prose handled by `at-inline-en`, and
+  // the guard drops the banks that put the debited account on this line
+  // instead -- an IBAN, a masked number or a bare figure is never a name.
+  rule(
+    'from-en',
+    String.raw`(?:^|\n)\s*from\s*[:\-]\s*(?!card|account|acc\b|sa[\s.*x\d]|[*x]+\d|\d)([^\s:\-][^\n]*)`,
+  ),
+  // Several banks use `At:` for the merchant and `At:` for the timestamp in the
+  // same format. A value that opens with a date or a clock is the timestamp.
+  rule(
+    'at-en',
+    String.raw`(?:^|\n)\s*at(?:\s*[:\-]\s*|\s+)(?!\d{1,4}[-/.]\d{1,2}|\d{1,2}:\d{2})([^\s:\-][^\n]*)`,
+  ),
   rule(
     'at-inline-en',
     String.raw`\b(?:at|from)\s+((?:(?!\b(?:to|on|at|from|for|with|card|account|ending|amount|your|the|was|has)\b)[A-Za-z0-9][A-Za-z0-9.&'*\-_]*[ ]?){1,5})`,
@@ -170,6 +223,8 @@ export const LAST4_PATTERNS: NamedPattern[] = [
   rule('card-label-en', String.raw`\bcard\s*[:\-]?\s*(?:no\.?|number)?\s*[*x.]*\s*(\d{4})\*?`),
   rule('ending-en', String.raw`\bending(?: in| with)?\s*[*.]*\s*(\d{4})`),
   rule('masked', String.raw`[*x.]{2,}\s*(\d{4})\b`),
+  // `Via: *9104,Visa` — one star, no label the other rules recognise.
+  rule('star-prefix', String.raw`(?:^|[\s:,;(])\*(\d{4})(?!\d)`),
   rule('trailing-star', String.raw`\b(\d{4})\*`),
 ];
 

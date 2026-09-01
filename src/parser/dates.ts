@@ -76,18 +76,40 @@ interface Clock {
   found: boolean;
 }
 
+const NO_CLOCK: Clock = { hour: 0, minute: 0, second: 0, found: false };
+
 function readClock(text: string, from: number): Clock {
   const window = text.slice(from, from + 40);
-  const match = new RegExp(TIME, 'i').exec(window);
-  if (!match) return { hour: 0, minute: 0, second: 0, found: false };
+  return interpretClock(new RegExp(TIME, 'i').exec(window));
+}
+
+/**
+ * Some Arabic formats put the clock before the date: `في 07:51 26-08-31`.
+ * Only a time immediately preceding the date counts, so an amount or a card
+ * tail further up the line can never be read as a timestamp.
+ */
+function readClockBefore(text: string, until: number): Clock {
+  const window = text.slice(Math.max(0, until - 20), until);
+  return interpretClock(new RegExp(`${TIME}\\s*$`, 'i').exec(window));
+}
+
+/** Shared reading of a matched clock, including meridiem in either script. */
+function interpretClock(match: RegExpExecArray | null): Clock {
+  if (!match) return NO_CLOCK;
   let hour = Number.parseInt(match[1] ?? '0', 10);
   const minute = Number.parseInt(match[2] ?? '0', 10);
   const second = Number.parseInt(match[3] ?? '0', 10);
   const meridiem = (match[4] ?? '').toLowerCase();
   if ((meridiem === 'pm' || meridiem === 'م') && hour < 12) hour += 12;
   if ((meridiem === 'am' || meridiem === 'ص') && hour === 12) hour = 0;
-  if (hour > 23 || minute > 59 || second > 59) return { hour: 0, minute: 0, second: 0, found: false };
+  if (hour > 23 || minute > 59 || second > 59) return NO_CLOCK;
   return { hour, minute, second, found: true };
+}
+
+/** The clock after the date if there is one, otherwise the clock before it. */
+function readClockAround(text: string, start: number, end: number): Clock {
+  const after = readClock(text, end);
+  return after.found ? after : readClockBefore(text, start);
 }
 
 /** `12 Jun 2024`, `12 يونيو 2024`, `Jun 12 2024`. */
@@ -156,19 +178,20 @@ export function findDate(text: string, reference: Date = new Date()): FoundDate 
   if (named) {
     const allMonths = [...AR_MONTHS, ...EN_MONTHS];
     const after = named.index + named[0].length;
+    const from = named.index;
     if (named[2] !== undefined) {
       const day = Number.parseInt(named[1] ?? '0', 10);
       const token = named[2].toLowerCase();
       const idx = allMonths.findIndex((m) => token.startsWith(m.toLowerCase()));
       const year = named[3] ? clampYear(Number.parseInt(named[3], 10)) : reference.getFullYear();
-      const clock = readClock(text, after);
+      const clock = readClockAround(text, from, after);
       const at = build(year, (idx % 12) + 1, day, clock.hour, clock.minute, clock.second);
       if (idx >= 0 && at !== undefined) return { at, hasTime: clock.found };
     } else if (named[4] !== undefined) {
       const idx = EN_MONTHS.findIndex((m) => named[4]!.toLowerCase().startsWith(m));
       const day = Number.parseInt(named[5] ?? '0', 10);
       const year = named[6] ? clampYear(Number.parseInt(named[6], 10)) : reference.getFullYear();
-      const clock = readClock(text, after);
+      const clock = readClockAround(text, from, after);
       const at = build(year, idx + 1, day, clock.hour, clock.minute, clock.second);
       if (idx >= 0 && at !== undefined) return { at, hasTime: clock.found };
     }
@@ -176,7 +199,11 @@ export function findDate(text: string, reference: Date = new Date()): FoundDate 
 
   const numeric = NUMERIC_DATE.exec(text);
   if (numeric) {
-    const clock = readClock(text, numeric.index + numeric[0].length);
+    const clock = readClockAround(
+      text,
+      numeric.index,
+      numeric.index + numeric[0].length,
+    );
     const at = resolveNumericDate(
       numeric[1] ?? '',
       numeric[2] ?? '',

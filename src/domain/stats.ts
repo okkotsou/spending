@@ -6,7 +6,7 @@
  * spending rather than netted, and an unconfirmed inflow contributes nothing
  * until the user confirms it.
  */
-import { isIncomeKind, isOutflow, type Transaction } from '@/types';
+import { isIncomeKind, isOutflow, type Transaction, type TxKind } from '@/types';
 import { dayIndex, dayStart, totalDays, type BudgetMonth } from './budgetMonth';
 
 /** Counts toward spending: an outflow that has not been reversed. */
@@ -29,6 +29,31 @@ export function totalSpend(txs: readonly Transaction[]): number {
 
 export function totalIncome(txs: readonly Transaction[]): number {
   return txs.reduce((sum, tx) => (countsAsIncome(tx) ? sum + tx.amountSar : sum), 0);
+}
+
+export interface IncomeSlice {
+  kind: TxKind;
+  amount: number;
+  count: number;
+}
+
+/**
+ * Confirmed income grouped by where it came from, largest first.
+ *
+ * A salary and a transfer from a friend are both money in, but they are not
+ * the same fact, and a single total hides that. The dashboard shows the split
+ * whenever there is more than one source.
+ */
+export function incomeByKind(txs: readonly Transaction[]): IncomeSlice[] {
+  const totals = new Map<TxKind, IncomeSlice>();
+  for (const tx of txs) {
+    if (!countsAsIncome(tx)) continue;
+    const current = totals.get(tx.kind) ?? { kind: tx.kind, amount: 0, count: 0 };
+    current.amount += tx.amountSar;
+    current.count += 1;
+    totals.set(tx.kind, current);
+  }
+  return [...totals.values()].sort((a, b) => b.amount - a.amount);
 }
 
 export interface CategoryTotal {

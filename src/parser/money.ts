@@ -137,3 +137,43 @@ export function findSarEquivalent(text: string): number | undefined {
   const value = parseNumber(match[1]);
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
+
+/**
+ * The total actually debited, when a message states one.
+ *
+ * A cross-border card purchase reports the goods amount, then the fees, then
+ * the sum that leaves the account. The goods amount alone understates the
+ * month, so the total is preferred -- but only when it reconciles with the
+ * stated fees and VAT. A figure that does not add up is some other total the
+ * parser has no business trusting, and the base amount stands.
+ */
+const TOTAL_DUE = new RegExp(
+  String.raw`(?:total(?: due)?(?: amount)?(?: due)?|المبلغ الاجمالي|الاجمالي|اجمالي المبلغ|المبلغ المستحق)\s*[:\-]?\s*(?:sar|ريال|ر\.س)?\s*(${NUMBER})`,
+  'iu',
+);
+
+const EXTRA_CHARGE = new RegExp(
+  String.raw`(?:fees?|vat|tax|رسوم|ضريبه|الضريبه)\s*[:\-]?\s*(?:sar|ريال|ر\.س)?\s*(${NUMBER})`,
+  'giu',
+);
+
+/** Cents, so a reconciliation is not defeated by binary floating point. */
+const cents = (value: number) => Math.round(value * 100);
+
+export function findChargedTotal(text: string, base: number): number | undefined {
+  const match = TOTAL_DUE.exec(text);
+  if (!match || match[1] === undefined) return undefined;
+  const total = parseNumber(match[1]);
+  if (!Number.isFinite(total) || total <= base) return undefined;
+
+  let extras = 0;
+  const re = new RegExp(EXTRA_CHARGE.source, EXTRA_CHARGE.flags);
+  let extra: RegExpExecArray | null = re.exec(text);
+  while (extra !== null) {
+    const value = parseNumber(extra[1] ?? '');
+    if (Number.isFinite(value)) extras += value;
+    extra = re.exec(text);
+  }
+
+  return cents(base) + cents(extras) === cents(total) ? total : undefined;
+}
